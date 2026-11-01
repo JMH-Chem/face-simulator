@@ -1,9 +1,0 @@
-__pycache__/
-*.pyc
-.pytest_cache/
-.venv/
-venv/
-# Generated datasets / previews
-out/
-*.png
-!docs/*.png
