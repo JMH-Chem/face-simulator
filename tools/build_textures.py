@@ -155,7 +155,7 @@ def brow_strokes(lm_px, W, H, side, mpp_cm, rng):
     """Paint individual eyebrow hairs as anti-aliased strokes in UV space.
 
     lm_px: 5 brow landmarks in pixel coords ordered lateral -> medial.
-    Returns density map (0..1).
+    Returns (density map (0..1), list of strand polylines in pixel coords).
     """
     scale = 4  # supersample
     im = Image.new("L", (W * scale, H * scale), 0)
@@ -173,6 +173,7 @@ def brow_strokes(lm_px, W, H, side, mpp_cm, rng):
     if nrm[100, 1] > 0:  # make normal point up (towards forehead => -y in image)
         nrm = -nrm
     nhair = 1150
+    strands = []
     for _ in range(nhair):
         s = rng.random() ** 0.85  # 0 lateral tail, 1 medial head
         i = int(s * 199)
@@ -192,20 +193,22 @@ def brow_strokes(lm_px, W, H, side, mpp_cm, rng):
         seg_pts = []
         p = root.copy()
         dd = d.copy()
+        # curl towards the brow's centre line (mirror-safe: bend towards -/+ normal)
+        toward = -up * np.sign(off) * (1 - head) + up * 0.15 * head
         for k in range(7):
             seg_pts.append(p.copy())
-            rot = bend + (-0.06 if off > 0 else 0.06)
-            c, s_ = np.cos(rot), np.sin(rot)
-            dd = np.array([c * dd[0] - s_ * dd[1], s_ * dd[0] + c * dd[1]])
+            dd = dd + toward * 0.11 + lat * bend * 0.04
+            dd /= np.linalg.norm(dd)
             p = p + dd * length / 6
+        strands.append((np.array(seg_pts), val_f := 0.6 + 0.4 * rng.random()))
         seg_pts = [(q[0] * scale, q[1] * scale) for q in seg_pts]
-        val = int(150 + 105 * rng.random())
+        val = int(255 * val_f)
         for k in range(len(seg_pts) - 1):
             w = max(1, int(round(scale * 0.75 * (1 - k / 7.0))))
             dr.line([seg_pts[k], seg_pts[k + 1]], fill=val, width=w)
     big = np.asarray(im, np.float64) / 255.0
     small = big.reshape(H, scale, W, scale).mean((1, 3))
-    return np.clip(small * 1.35, 0, 1)
+    return np.clip(small * 1.35, 0, 1), strands
 
 
 def main():
@@ -286,8 +289,8 @@ def main():
     mid = lowres(lambda q: fbm(noise, q + 5.0, 140, 3), Pm, 2)
     fine = fbm(noise2, Pm + 9.0, 700, 2)
     M = 1.0 + 0.09 * low + 0.07 * mid + 0.035 * fine
-    M += 0.30 * under_eye + 0.12 * lids
-    M *= 1 - 0.14 * lips
+    M += 0.14 * under_eye + 0.10 * lids
+    M *= 1 + 0.12 * lips
     M -= 0.05 * forehead * smoothstep(0.2, 0.8, low)
     # Freckles / small pigment spots (sparse, mostly nose and cheeks).
     spots = smoothstep(0.55, 0.75, noise(Pm * 900 + 3.3)) * smoothstep(0.0, 0.6, lowres(lambda q: noise2(q * 60), Pm, 4))
@@ -304,13 +307,23 @@ def main():
     # Fine capillary mottling on cheeks / nose.
     cap = smoothstep(0.35, 0.8, np.abs(fbm(noise2, Pm + 1.7, 380, 3)) * 2.2)
     Hb += 0.12 * cap * np.clip(cheeks + nose, 0, 1)
-    Hb = Hb * (1 - lips) + lips * (1.75 + 0.2 * mid + 0.1 * fine)
+    Hb = Hb * (1 - lips) + lips * (1.5 + 0.2 * mid + 0.12 * fine)
 
     # Eyebrows (density is used as pigment and also drives the 3D brow cards).
     brows = np.zeros((H, W))
     px_cm = (np.median(mpp[:, :FACE_RES][mask[:, :FACE_RES]]) * 100.0)
-    brows = np.maximum(brows, brow_strokes(lm_px[17:22], W, H, "R", px_cm, RNG))
-    brows = np.maximum(brows, brow_strokes(lm_px[26:21:-1], W, H, "L", px_cm, RNG))
+    bR, sR = brow_strokes(lm_px[17:22], W, H, "R", px_cm, RNG)
+    bL, sL = brow_strokes(lm_px[26:21:-1], W, H, "L", px_cm, RNG)
+    brows = np.maximum(bR, bL)
+    # Export the same strands for the 3D brow hairs (atlas UV, 7 points each).
+    pts = np.stack([s_[0] for s_ in sR + sL])            # (N, 7, 2) pixels
+    uv = np.stack([pts[..., 0] / W, 1.0 - pts[..., 1] / H], -1)
+    q = np.clip(np.round(uv * 65535), 0, 65535).astype(np.uint16)
+    shade = np.array([s_[1] for s_ in sR + sL])
+    with open(os.path.join(args.assets, "brows.bin"), "wb") as fh:
+        np.array([len(q), q.shape[1]], np.uint16).tofile(fh)
+        q.tofile(fh)
+        np.round(shade * 255).astype(np.uint8).tofile(fh)
     brows *= face_tile
     brow_shadow = ndimage.gaussian_filter(brows, 5)
     M += 0.45 * brow_shadow + 3.0 * brows

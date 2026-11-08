@@ -70,6 +70,7 @@ const linToCss = (rgb) => '#' + rgb.map((c) => {
 function buildPanels() {
   const panels = $('#panels');
   const ui = {};
+  ui.syncModes = (w) => modeSliders.forEach((sl, i) => sl.set(w[i] || 0));
 
   // FACE ------------------------------------------------------------------
   let variation = 1.0;
@@ -198,11 +199,11 @@ function buildPanels() {
 // ---------------------------------------------------------------- boot
 const msg = $('#loading-msg');
 app.init((m) => { msg.textContent = m; }).then(() => {
-  buildPanels();
+  const ui = buildPanels();
   app.setAperture(4);
   app.setIris('brown');
   // start from a pleasant sample identity
-  app.randomIdentity(0.9, 20241108);
+  ui.syncModes(app.randomIdentity(0.9, 20241108));
   let acc = 0, n = 0;
   app.listeners.add((dt) => {
     acc += dt; n++;

@@ -115,7 +115,7 @@ export function createSkinMaterial(tex) {
         float hb = sc.g * 2.5 * uHemoglobin * (1.0 + uFlush * (0.6 + 0.8 * smoothstep(0.25, 0.6, sc.g)));
         vec3 albedo = skinAlbedo(mel, hb);
         // Brows: tint the pigment towards the chosen hair colour.
-        albedo = mix(albedo, uBrowTint, clamp(sh.b * 0.92, 0.0, 1.0));
+        albedo = mix(albedo, uBrowTint * 1.4, clamp(sh.b * 0.6, 0.0, 1.0));
         // Short hair: shafts cover part of the skin (beard ~ shadow, buzz cut ~ dense).
         float stub = clamp(sh.r * uBeard * 0.9 + sh.g * uScalp * 1.45, 0.0, 0.92);
         albedo = mix(albedo, uHairTint, stub);
@@ -233,12 +233,12 @@ export function createMouthSocketMaterial() {
 
 export function createGumsTeethMaterials() {
   const gums = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(0.55, 0.16, 0.16), roughness: 0.3, clearcoat: 0.7, clearcoatRoughness: 0.12 });
-  addDepthDarkening(gums, 0.108, 0.07, 0.06);
+  addDepthDarkening(gums, 0.106, 0.085, 0.03);
   const teeth = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color(0.80, 0.76, 0.66), roughness: 0.22, clearcoat: 0.5, clearcoatRoughness: 0.08,
+    color: new THREE.Color(0.58, 0.54, 0.45), roughness: 0.3, clearcoat: 0.35, clearcoatRoughness: 0.12,
     sheen: 0.2, sheenColor: new THREE.Color(0.6, 0.6, 0.65),
   });
-  addDepthDarkening(teeth, 0.106, 0.075, 0.08);
+  addDepthDarkening(teeth, 0.108, 0.085, 0.05);
   return { gums, teeth };
 }
 
@@ -254,9 +254,13 @@ function addDepthDarkening(m, zFront, zBack, floor) {
         float depthAO = mix(${floor.toFixed(3)}, 1.0, smoothstep(${zBack.toFixed(4)}, ${zFront.toFixed(4)}, vObjPos.z));
         depthAO *= mix(0.45, 1.0, clamp(uMouthOpen * 1.5, 0.0, 1.0));
         reflectedLight.indirectDiffuse *= depthAO;
-        reflectedLight.indirectSpecular *= depthAO;
-        reflectedLight.directDiffuse *= mix(depthAO, 1.0, 0.3);
+        reflectedLight.indirectSpecular *= depthAO * depthAO;
+        reflectedLight.directDiffuse *= mix(depthAO, 1.0, 0.2);
         reflectedLight.directSpecular *= depthAO;
+        #ifdef USE_CLEARCOAT
+          clearcoatSpecularIndirect *= depthAO * depthAO;
+          clearcoatSpecularDirect *= depthAO;
+        #endif
       `);
   };
   m.customProgramCacheKey = () => `mouth-${zFront}-${zBack}-${floor}`;

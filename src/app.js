@@ -11,6 +11,7 @@ import { createPipeline } from './sss.js';
 import { StudioLighting } from './lighting.js';
 import { Animator } from './animator.js';
 import { installPCSS } from './shadows.js';
+import { loadBrowStrands, Brows } from './brows.js';
 
 installPCSS();
 
@@ -42,10 +43,12 @@ export class FaceApp {
     camera.position.set(0.0, 0.035, 1.05);
 
     onProgress('Loading face model…');
-    const [model, tex] = await Promise.all([
+    const [model, tex, browData] = await Promise.all([
       FaceModel.load(this.assetBase),
       loadTextures(this.assetBase + 'tex/'),
+      loadBrowStrands(this.assetBase + 'brows.bin'),
     ]);
+    this.browData = browData;
     this.model = model;
     this.tex = tex;
     onProgress('Building materials…');
@@ -144,6 +147,9 @@ export class FaceApp {
       this.eyes[side] = { pivot, ball };
     }
     this.syncEyes();
+
+    this.brows = new Brows(model, this.browData, skinParams.uBrowTint);
+    head.add(this.brows.mesh);
   }
 
   syncEyes() {
@@ -158,12 +164,14 @@ export class FaceApp {
   resize() {
     const w = this.canvas.clientWidth || window.innerWidth;
     const h = this.canvas.clientHeight || window.innerHeight;
-    const pr = Math.min(window.devicePixelRatio || 1, 2) * this.renderScale;
+    const cap = Math.min(w, h) < 700 ? 1.5 : 2; // phones: keep the SSS passes affordable
+    const pr = Math.min(window.devicePixelRatio || 1, cap) * this.renderScale;
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.pipeline.setSize(w, h, pr);
+    this.brows?.setResolution(this.camera, h * pr);
   }
 
   // ------------------------------------------------------------- per frame
@@ -206,9 +214,7 @@ export class FaceApp {
 
     animator.wrinkles(skinParams.uWrinkleW.value);
     skinParams.uMouthOpen.value = model.getExpression('jawOpen');
-    if (model.update()) {
-      // eye centres only change with identity
-    }
+    if (model.update()) this.brows.update();
 
     const focus = camera.position.distanceTo(head.localToWorld(eyeMid.clone()));
     this.pipeline.render(dt, focus);

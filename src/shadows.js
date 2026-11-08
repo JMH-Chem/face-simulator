@@ -13,12 +13,12 @@ float pcssIGN(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 
 
 float pcssShadow(sampler2D sm, vec2 size, float angleDeg, vec4 sc) {
   float ang = radians(max(angleDeg, 0.3));
-  float rot = pcssIGN(gl_FragCoord.xy) * 6.2831853;
+  float rot = 0.7; // fixed Vogel-disk orientation: no per-pixel noise on eyes/teeth
   mat2 R = mat2(cos(rot), sin(rot), -sin(rot), cos(rot));
   float search = clamp(ang * 0.05 / ${SHADOW_FRUSTUM.toFixed(3)}, 2.0 / size.x, 0.07);
   float bsum = 0.0, bcnt = 0.0;
-  for (int i = 0; i < 16; i++) {
-    float r = sqrt((float(i) + 0.5) / 16.0);
+  for (int i = 0; i < 24; i++) {
+    float r = sqrt((float(i) + 0.5) / 24.0);
     float a = float(i) * 2.39996323;
     vec2 o = R * vec2(cos(a), sin(a)) * r * search;
     float d = unpackRGBAToDepth(texture2D(sm, sc.xy + o));
@@ -29,13 +29,13 @@ float pcssShadow(sampler2D sm, vec2 size, float angleDeg, vec4 sc) {
   float pen = (sc.z - zb) * ${SHADOW_DEPTH_RANGE.toFixed(3)} * ang / ${SHADOW_FRUSTUM.toFixed(3)};
   pen = clamp(pen, 1.25 / size.x, search);
   float s = 0.0;
-  for (int i = 0; i < 32; i++) {
-    float r = sqrt((float(i) + 0.5) / 32.0);
+  for (int i = 0; i < 64; i++) {
+    float r = sqrt((float(i) + 0.5) / 64.0);
     float a = float(i) * 2.39996323;
     vec2 o = R * vec2(cos(a), sin(a)) * r * pen;
     s += texture2DCompare(sm, sc.xy + o, sc.z);
   }
-  return s / 32.0;
+  return s / 64.0;
 }
 `;
 
