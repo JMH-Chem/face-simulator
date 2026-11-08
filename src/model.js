@@ -3,10 +3,22 @@
 // streams the result into one BufferGeometry per part.
 import * as THREE from 'three';
 
-async function fetchBinary(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-  const buf = await res.arrayBuffer();
+// Hosts that only serve text can set window.FACE_B64 = true and ship each
+// binary next to itself as "<name>.b64.txt".
+export async function fetchBinary(url) {
+  let buf;
+  if (globalThis.FACE_B64) {
+    const res = await fetch(url + '.b64.txt');
+    if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+    const bin = atob((await res.text()).trim());
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    buf = bytes.buffer;
+  } else {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+    buf = await res.arrayBuffer();
+  }
   const head = new Uint8Array(buf, 0, 2);
   if (head[0] === 0x1f && head[1] === 0x8b) {
     // Still gzip'd (server did not apply Content-Encoding): inflate here.

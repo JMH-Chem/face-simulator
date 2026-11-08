@@ -5,9 +5,10 @@
 // and expression changes; hairs rise a little off the skin towards the tip and
 // are drawn as camera-facing ribbons with a minimum on-screen width.
 import * as THREE from 'three';
+import { fetchBinary } from './model.js';
 
 export async function loadBrowStrands(url) {
-  const buf = await (await fetch(url)).arrayBuffer();
+  const buf = await fetchBinary(url);
   const head = new Uint16Array(buf, 0, 2);
   const count = head[0], npts = head[1];
   const uv = new Uint16Array(buf, 4, count * npts * 2);

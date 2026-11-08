@@ -4,6 +4,7 @@
 // up as rectangular catch-lights in the eyes, as in real portrait photography.
 import * as THREE from 'three';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { fetchBinary } from './model.js';
 
 const deg = THREE.MathUtils.degToRad;
 
@@ -176,7 +177,14 @@ export class StudioLighting {
   async loadHDRI(url) {
     this.hdrCache = this.hdrCache || {};
     if (!this.hdrCache[url]) {
-      const tex = await new RGBELoader().setDataType(THREE.FloatType).loadAsync((this.base || './assets/') + url);
+      const buf = await fetchBinary((this.base || './assets/') + url);
+      const hdr = new RGBELoader().setDataType(THREE.FloatType).parse(buf);
+      const tex = new THREE.DataTexture(hdr.data, hdr.width, hdr.height, THREE.RGBAFormat, THREE.FloatType);
+      tex.colorSpace = THREE.LinearSRGBColorSpace;
+      tex.minFilter = tex.magFilter = THREE.LinearFilter;
+      tex.generateMipmaps = false;
+      tex.flipY = true;
+      tex.needsUpdate = true;
       tex.mapping = THREE.EquirectangularReflectionMapping;
       const dir = StudioLighting.dominantDirection(tex);
       this.hdrCache[url] = { tex, env: this.pmrem.fromEquirectangular(tex), dir };
