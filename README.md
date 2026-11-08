@@ -13,7 +13,7 @@ light-stage scans, so it does not depict any real individual.
 | Skin light transport | Screen-space separable subsurface scattering with the d'Eon/Luebke six-Gaussian skin profile, applied to irradiance only so pigment detail stays sharp; thin-part transmission (ears, nostrils) gated by the shadow map |
 | Skin surface | Dual-lobe specular (base + oily clear coat by region), tileable micro-relief with pores, macro age lines, expression-driven wrinkle maps (brow raise, smile/squint, frown/sneer) |
 | Eyes | Custom eyeball with corneal bulge; view ray refracted (n = 1.376) onto a recessed iris plane, adjustable pupil, procedural iris fibres/crypts and scleral vessels, tear film and lid occlusion |
-| Lighting | Procedural photo-studio rigs prefiltered into image-based lighting (softboxes appear as catch-lights) plus a key light with PCSS contact-hardening soft shadows |
+| Lighting | Two captured HDRIs from Poly Haven (CC0) plus procedural photo-studio rigs, prefiltered into image-based lighting, and a key light (aimed at the HDRI's brightest region) with PCSS contact-hardening soft shadows |
 | Camera | Thin-lens depth of field from real focal length / f-number, bloom, Khronos PBR Neutral tone mapping, grain, vignette |
 | Behaviour | Blinks, saccades, lid–gaze coupling, breathing, idle head motion, expression presets, babble talking, cursor gaze |
 
@@ -51,4 +51,5 @@ python3 tools/build_detail_textures.py
 
 Face shape and expression data: [ICT-FaceKit](https://github.com/ICT-VGL/ICT-FaceKit),
 USC Institute for Creative Technologies, MIT License (see `licenses/ICT-FaceKit-LICENSE.txt`).
-All textures, shaders and lighting are generated procedurally by the scripts in this repository.
+HDRI environments: [Poly Haven](https://polyhaven.com) (CC0) — `photo_studio_loft_hall`, `kloofendal_48d_partly_cloudy_puresky`.
+All other textures, shaders and lighting are generated procedurally by the scripts in this repository.

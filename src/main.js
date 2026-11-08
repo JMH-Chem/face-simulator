@@ -143,7 +143,7 @@ function buildPanels() {
     group('Surface', null,
       slider('oil', 'Sebum / shine', { min: 0, max: 1.5, step: 0.01, value: skinParams.uOil.value, onInput: (v) => { skinParams.uOil.value = v; } }),
       slider('rough', 'Roughness scale', { min: 0.6, max: 1.4, step: 0.01, value: 1, onInput: (v) => { skinParams.uRoughness.value = v; } }),
-      slider('pores', 'Pore depth', { min: 0, max: 2, step: 0.01, value: 1, onInput: (v) => { skinParams.uPoreStrength.value = v; } }),
+      slider('pores', 'Pore depth', { min: 0, max: 2, step: 0.01, value: skinParams.uPoreStrength.value, onInput: (v) => { skinParams.uPoreStrength.value = v; } }),
       slider('age', 'Age lines', { min: 0, max: 1.5, step: 0.01, value: skinParams.uAge.value, onInput: (v) => { skinParams.uAge.value = v; } }),
       slider('sss', 'Scatter radius', { min: 0, max: 2, step: 0.01, value: 1, fmt: (v) => `${v.toFixed(2)}×`, onInput: (v) => { app.pipeline.skin.sssWidth = v; app.pipeline.skin.sssEnabled = v > 0.01; } })),
     group('Hair', null,
@@ -166,7 +166,7 @@ function buildPanels() {
   const fItems = [[1.4, '1.4'], [2.8, '2.8'], [4, '4'], [8, '8'], [22, '16+']];
   const pLight = el('div', { class: 'panel', id: 'p-light', role: 'tabpanel', 'aria-labelledby': 'tab-light', hidden: '' },
     group('Lighting rig', null,
-      chips('Lighting preset', Object.entries(PRESETS).map(([k, p]) => [k, p.label]), 'studio', (k) => { app.setLighting(k); $('#ro-light').textContent = PRESETS[k].label; }),
+      chips('Lighting preset', Object.entries(PRESETS).map(([k, p]) => [k, p.label]), 'loft', (k) => { app.setLighting(k); $('#ro-light').textContent = PRESETS[k].label; }),
       slider('rot', 'Rotate rig', { min: -180, max: 180, step: 1, value: 0, fmt: (v) => `${v.toFixed(0)}°`, onInput: (v) => { app.lighting.rotation = v; app.lighting.update(); } }),
       slider('ev', 'Exposure', { min: -2, max: 2, step: 0.1, value: 0, fmt: (v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)} EV`, onInput: (v) => { app.setExposure(v); $('#ro-ev').textContent = `${v >= 0 ? '' : ''}${v.toFixed(1)}`; } })),
     group('Lens', 'full-frame equivalent',
@@ -179,7 +179,7 @@ function buildPanels() {
       slider('scale', 'Render resolution', { min: 0.5, max: 1.5, step: 0.05, value: 1, fmt: (v) => `${Math.round(v * 100)}%`, onInput: (v) => app.setRenderScale(v) })),
     el('p', { class: 'credits' },
       'Shape and expression data: ', el('a', { href: 'https://github.com/ICT-VGL/ICT-FaceKit', target: '_blank', rel: 'noopener' }, 'ICT-FaceKit'),
-      ' (USC ICT, MIT). Skin, eyes and lighting are procedural.'),
+      ' (USC ICT, MIT). HDRIs: ', el('a', { href: 'https://polyhaven.com', target: '_blank', rel: 'noopener' }, 'Poly Haven'), ' (CC0). Skin, eyes and studio rigs are procedural.'),
   );
 
   panels.append(pFace, pExpr, pSkin, pEyes, pLight);

@@ -336,7 +336,7 @@ def main():
 
     # ---------------------------------------------------------- height maps
     # Static relief (metres): micro bumps + age lines.
-    h = 55e-6 * lowres(lambda q: fbm(noise, q + 2.0, 260, 3), Pm, 2) + 16e-6 * fbm(noise, Pm + 6.0, 750, 2) + 10e-6 * fbm(noise2, Pm + 4.0, 1300, 2)
+    h = 80e-6 * lowres(lambda q: fbm(noise, q + 2.0, 260, 3), Pm, 2) + 28e-6 * fbm(noise, Pm + 6.0, 750, 2) + 12e-6 * fbm(noise2, Pm + 4.0, 1300, 2)
     h *= 1 - 0.85 * lips
 
     # Forehead lines follow the brow arc.

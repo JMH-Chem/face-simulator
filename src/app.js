@@ -58,7 +58,8 @@ export class FaceApp {
     this.buildMeshes();
 
     this.lighting = new StudioLighting(renderer, scene, head);
-    this.lighting.apply('studio');
+    this.lighting.base = this.assetBase;
+    await this.lighting.apply('loft');
     renderer.toneMappingExposure = this.lighting.exposure;
 
     this.controls = new OrbitControls(camera, this.canvas);
@@ -256,8 +257,8 @@ export class FaceApp {
     eyeParams.uIrisInner.value.setRGB(...i);
   }
 
-  setLighting(name) {
-    this.lighting.apply(name);
+  async setLighting(name) {
+    await this.lighting.apply(name);
     this.renderer.toneMappingExposure = this.lighting.exposure * (this.exposureBias || 1);
   }
 

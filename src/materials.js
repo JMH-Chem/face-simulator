@@ -37,13 +37,13 @@ export const skinParams = {
   uMelanin: { value: 0.24 },
   uHemoglobin: { value: 0.46 },
   uFlush: { value: 0.0 },
-  uBeard: { value: 0.5 },
+  uBeard: { value: 0.28 },
   uScalp: { value: 1.0 },
   uHairTint: { value: new THREE.Color(0.05, 0.035, 0.025) },
   uBrowTint: { value: new THREE.Color(0.07, 0.045, 0.03) },
   uAge: { value: 0.35 },
   uWrinkleW: { value: new THREE.Vector3(0, 0, 0) },
-  uPoreStrength: { value: 1.0 },
+  uPoreStrength: { value: 1.25 },
   uPoreScale: { value: 26.0 },
   uRoughness: { value: 1.0 },
   uOil: { value: 0.7 },
@@ -153,6 +153,7 @@ export function createSkinMaterial(tex) {
         poreN.xy *= poreAmt * (0.75 + 0.35 * sd.b);
         skinCavity *= mix(1.0, pm.b, poreAmt * 0.8);
         vec3 mapN = blendN(blendN(macroN, wrN), poreN);
+        diffuseColor.rgb *= mix(1.0, skinCavity, 0.2);
         normal = normalize(tbn * mapN);
         vec3 skinCoatN = normalize(tbn * blendN(macroN, wrN));
       `)

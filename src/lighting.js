@@ -3,6 +3,7 @@
 // shadow casting key light aligned with the main source. The softboxes show
 // up as rectangular catch-lights in the eyes, as in real portrait photography.
 import * as THREE from 'three';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 const deg = THREE.MathUtils.degToRad;
 
@@ -12,6 +13,20 @@ function dirFrom(az, el) {
 }
 
 export const PRESETS = {
+  loft: {
+    label: 'Loft windows (HDRI)',
+    hdri: 'env/photo_studio_loft_hall_1k.hdr',
+    key: { intensity: 1.6, color: [1, 0.98, 0.95], softness: 28 },
+    envIntensity: 1.0,
+    exposure: 1.0,
+  },
+  outdoor: {
+    label: 'Open sky (HDRI)',
+    hdri: 'env/kloofendal_48d_partly_cloudy_puresky_1k.hdr',
+    key: { intensity: 2.2, color: [1, 0.96, 0.9], softness: 2.5 },
+    envIntensity: 0.9,
+    exposure: 0.9,
+  },
   studio: {
     label: 'Studio softbox',
     dome: { top: [0.05, 0.05, 0.055], horizon: [0.045, 0.045, 0.05], bottom: [0.02, 0.019, 0.018] },
@@ -131,9 +146,65 @@ export class StudioLighting {
     this.envTarget = null;
   }
 
-  apply(name) {
+  // Brightest direction of an equirect HDR (luminance x solid angle), used to
+  // aim the shadow-casting key light at the window / sun.
+  static dominantDirection(tex) {
+    const { data, width: W, height: H } = tex.image;
+    let best = -1, bi = 0;
+    const lum = new Float32Array(W * H);
+    for (let y = 0; y < H; y++) {
+      const w = Math.cos(((y + 0.5) / H - 0.5) * Math.PI);
+      for (let x = 0; x < W; x++) {
+        const i = y * W + x;
+        lum[i] = (0.2126 * data[4 * i] + 0.7152 * data[4 * i + 1] + 0.0722 * data[4 * i + 2]) * w;
+      }
+    }
+    // box-blur a little so a large window wins over a tiny hot pixel
+    const R = Math.max(2, Math.round(W / 64));
+    for (let y = R; y < H - R; y += 2) {
+      for (let x = 0; x < W; x += 2) {
+        let s = 0;
+        for (let dy = -R; dy <= R; dy += 2) for (let dx = -R; dx <= R; dx += 2) s += lum[(y + dy) * W + ((x + dx + W) % W)];
+        if (s > best) { best = s; bi = y * W + x; }
+      }
+    }
+    const u = ((bi % W) + 0.5) / W, v = 1 - (Math.floor(bi / W) + 0.5) / H;
+    const phi = (u - 0.5) * 2 * Math.PI, lat = (v - 0.5) * Math.PI;
+    return new THREE.Vector3(Math.cos(phi) * Math.cos(lat), Math.sin(lat), Math.sin(phi) * Math.cos(lat));
+  }
+
+  async loadHDRI(url) {
+    this.hdrCache = this.hdrCache || {};
+    if (!this.hdrCache[url]) {
+      const tex = await new RGBELoader().setDataType(THREE.FloatType).loadAsync((this.base || './assets/') + url);
+      tex.mapping = THREE.EquirectangularReflectionMapping;
+      const dir = StudioLighting.dominantDirection(tex);
+      this.hdrCache[url] = { tex, env: this.pmrem.fromEquirectangular(tex), dir };
+    }
+    return this.hdrCache[url];
+  }
+
+  async apply(name) {
     const p = PRESETS[name];
     this.preset = name;
+    if (p.hdri) {
+      const h = await this.loadHDRI(p.hdri);
+      if (this.preset !== name) return;
+      this.scene.environment = h.env.texture;
+      this.scene.background = h.tex;
+      this.scene.backgroundBlurriness = 0.3;
+      this.scene.backgroundIntensity = 0.8;
+      this.backdrop.visible = false;
+      p.key.az = THREE.MathUtils.radToDeg(Math.atan2(h.dir.x, h.dir.z));
+      p.key.el = THREE.MathUtils.radToDeg(Math.asin(h.dir.y));
+      this.key.color.setRGB(...p.key.color);
+      this.key.shadow.radius = p.key.softness;
+      this.exposure = p.exposure;
+      this.update();
+      return;
+    }
+    this.scene.background = null;
+    this.backdrop.visible = true;
     // Environment scene for prefiltered IBL.
     const env = new THREE.Scene();
     env.add(new THREE.Mesh(new THREE.SphereGeometry(20, 64, 32), domeMaterial(p.dome)));
@@ -161,10 +232,11 @@ export class StudioLighting {
     const p = PRESETS[this.preset];
     const rot = deg(this.rotation);
     this.scene.environmentRotation.set(0, rot, 0);
+    this.scene.backgroundRotation.set(0, rot, 0);
     this.backdrop.rotation.set(0, 0, 0);
     const d = dirFrom(p.key.az, p.key.el).applyAxisAngle(new THREE.Vector3(0, 1, 0), rot);
     this.key.position.copy(d.multiplyScalar(1.5));
     this.key.intensity = p.key.intensity * this.intensity;
-    this.scene.environmentIntensity = this.intensity;
+    this.scene.environmentIntensity = this.intensity * (p.envIntensity ?? 1);
   }
 }
